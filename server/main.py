@@ -1,44 +1,106 @@
 import socket
-import threading
 import os
+from threading import Thread
 
-def receive_file(client_socket, file_name):
+
+def is_file_in_directory(file_name, directory_path='repository'):
+    # Constrói o caminho completo do arquivo
+    file_path = os.path.join(directory_path, file_name)
+    # Verifica se o arquivo existe no caminho especificado
+    return os.path.isfile(file_path)
+
+def list_files():
+    files = os.listdir('repository')
+    return '\n'.join(files)
+
+def upload_file(client_socket, file_name):
+    print('recebendo arquivo')
     try:
-        with open(file_name, 'wb') as file:
+        with open('repository/'+file_name, 'wb') as file:
             while True:
-                data = client_socket.recv(1024)
-                if not data:
+                file_content = client_socket.recv(1024)
+                
+                if b'$$enviado$$' in  file_content:
+                    file_content = file_content.replace(b'$$enviado$$', b"")
+                    file.write(file_content)
                     break
-                file.write(data)
+                
+                file.write(file_content)
+        print('arquivo recebido')
+                
     except Exception as e:
         print(f"Erro ao receber o arquivo {file_name}: {e}")
-    finally:
-        client_socket.close()
 
-def handle_client(client_socket, addr):
-    print(f"Conexão recebida de {addr}")
+def download_file(client_socket, file_name):
+    if is_file_in_directory(file_name):
+        with open(f'repository/{file_name}', 'rb') as file:
+            file_content = file.read(1024)
+            while file_content:
+                client_socket.send(file_content)
+                file_content = file.read(1024)                
+                
+        #return file_content
+        client_socket.send('$$enviado$$'.encode('utf-8'))
+        print('arquivo enviado')
+    else:
+        client_socket.send('$$file not found$$'.encode('utf-8'))
+        
 
-    file_name = client_socket.recv(1024).decode()
-    print(f"Recebendo arquivo: {file_name}")
+def delete_file(file_name):
+    try:
+        os.remove(f'repository/{file_name}')
+        return f'{file_name} deleted successfully.'
+    except FileNotFoundError:
+        return f'File {file_name} not found.'
 
-    receive_file(client_socket, file_name)
+def handle_client(client_socket):
+    while True:
+        data = client_socket.recv(1024).decode('utf-8')
+        if not data:
+            break
 
-def main():
+        command, *params = data.split()
+        
+        if command == 'list':
+            response = list_files()
+            
+        elif command == 'upload':
+            file_name, = params
+            #file_content = client_socket.recv(1024)
+            #response = upload_file(file_content, file_name)
+            upload_file(client_socket, file_name)
+            continue
+        elif command == 'download':
+            file_name, path= params
+            download_file(client_socket, file_name)
+            continue 
+        elif command == 'delete':
+            file_name, = params
+            response = delete_file(file_name)
+        elif command == 'exit':
+            response = 'Server shutting down.'
+            break
+        else:
+            response = 'Invalid command.'
+
+        client_socket.sendall(response.encode('utf-8'))
+
+    client_socket.close()
+
+def start_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_host = '127.0.0.1'
-    server_port = 8888
-
-    server_socket.bind((server_host, server_port))
+    server_socket.bind(('localhost', 8888))
     server_socket.listen(5)
 
-    print(f"Servidor escutando em {server_host}:{server_port}")
+    print('Server listening on port 8888...')
 
     while True:
         client_socket, addr = server_socket.accept()
+        print(f'Accepted connection from {addr}')
+        client_handler = Thread(target=handle_client, args=(client_socket,))
+        client_handler.start()
 
-        # Use uma nova thread para lidar com a conexão do cliente
-        client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
-        client_thread.start()
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    if not os.path.exists('repository'):
+        os.makedirs('repository')
+    start_server()

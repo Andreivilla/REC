@@ -1,3 +1,0 @@
-novo_arquivo.txt, 2023-11-21
-novo_arquivo.txt, 2023-11-21
-teste.txt, 2023-11-21 15:43:55

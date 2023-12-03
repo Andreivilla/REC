@@ -1,4 +1,10 @@
 import socket
+import os
+def is_file_in_directory(file_name, directory_path='repository'):
+    # Constrói o caminho completo do arquivo
+    file_path = os.path.join(directory_path, file_name)
+    # Verifica se o arquivo existe no caminho especificado
+    return os.path.isfile(file_path)
 
 def send_command(client_socket, command, *params):
     data = ' '.join([command, *params])
@@ -8,8 +14,9 @@ def receive_response(client_socket):
     return client_socket.recv(1024).decode('utf-8')
 
 def upload_file(client_socket, file_name):
-    send_command(client_socket, 'upload', file_name)
-    try:
+    if is_file_in_directory(file_name):
+        send_command(client_socket, 'upload', file_name)
+
         with open(f'repository/{file_name}', 'rb') as file:
             file_content = file.read(1024)
             while file_content:
@@ -18,19 +25,29 @@ def upload_file(client_socket, file_name):
         #return file_content
         client_socket.send('$$enviado$$'.encode('utf-8'))
         print('arquivo enviado')
-    except FileNotFoundError:
-        return f'File {file_name} not found.'
+    else:
+        print('Arquivo não encontrado ele deve estar na pasta repository')
+        return
 
-def download_file(client_socket, file_name, dest_path):
+def download_file(client_socket, file_name, dest_path='repository'):
     send_command(client_socket, 'download', file_name, dest_path)
-    print('baixando arquivo')
     #file_content = client_socket.recv(1024)
     try:
         with open(dest_path + '/' + file_name, 'wb') as file:
             while True:
                 file_content = client_socket.recv(1024)
-                if file_content == b'$$enviado$$':
+                #recebe resposta que o servidor não achou o arquivo
+                if file_content == b'$$file not found$$':
+                    os.remove(dest_path + '/' + file_name)
+                    print('arquivo não encontrado')
+                    return
+                
+                if b'$$enviado$$' in  file_content:
+                    file_content = file_content.replace(b'$$enviado$$', b"")
+                    file.write(file_content)
                     break
+
+                print(f'baixando arquivo') 
                 file.write(file_content)
         print('arquivo recebido')
                 
@@ -56,8 +73,12 @@ def main():
             upload_file(client_socket, file_name)
             continue
         elif command == 'download':#ok funfa
-            file_name, dest_path = params
-            download_file(client_socket, file_name, dest_path)
+            if len(params)> 1:
+                file_name, dest_path = params
+                download_file(client_socket, file_name, dest_path)
+            else:
+                file_name, = params
+                download_file(client_socket, file_name)
             continue
         elif command == 'delete':
             file_name, = params
