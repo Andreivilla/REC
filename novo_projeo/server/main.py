@@ -6,8 +6,19 @@ def list_files():
     files = os.listdir('repository')
     return '\n'.join(files)
 
-def upload_file(client_soket, file_name):
-    with open('repository/'+file_name, wb) as file
+def upload_file(client_socket, file_name):
+    print('recebendo arquivo')
+    try:
+        with open('repository/'+file_name, 'wb') as file:
+            while True:
+                file_content = client_socket.recv(1024)
+                if file_content == b'$$enviado$$':
+                    break
+                file.write(file_content)
+        print('arquivo recebido')
+                
+    except Exception as e:
+        print(f"Erro ao receber o arquivo {file_name}: {e}")
 
 
 
@@ -42,7 +53,7 @@ def handle_client(client_socket):
             break
 
         command, *params = data.split()
-
+        print(f'params: {params}')
         if command == 'list':
             response = list_files()
             

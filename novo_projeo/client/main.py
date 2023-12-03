@@ -8,15 +8,22 @@ def receive_response(client_socket):
     return client_socket.recv(1024).decode('utf-8')
 
 def upload_file(client_socket, file_name):
-    with open(file_name, 'rb') as file:
-        file_content = file.read()
     send_command(client_socket, 'upload', file_name)
-    client_socket.sendall(file_content)
-    response = receive_response(client_socket)
-    print(response)
+    try:
+        with open(f'repository/{file_name}', 'rb') as file:
+            file_content = file.read(1024)
+            while file_content:
+                client_socket.send(file_content)
+                file_content = file.read(1024)
+        #return file_content
+        client_socket.send('$$enviado$$'.encode('utf-8'))
+        print('arquivo enviado')
+    except FileNotFoundError:
+        return f'File {file_name} not found.'
 
 def download_file(client_socket, file_name, dest_path):
     send_command(client_socket, 'download', file_name, dest_path)
+    print('baixando arquivo')
     #file_content = client_socket.recv(1024)
     try:
         with open(dest_path + '/' + file_name, 'wb') as file:
@@ -37,6 +44,7 @@ def main():
         user_input = input('Enter command: ')
         #command, *params = 'download a.txt repository'.split()#user_input.split()
         command, *params = user_input.split()
+        #upload d.txt
 
         if command == 'exit':
             send_command(client_socket, 'exit')
@@ -57,6 +65,8 @@ def main():
         else:
             print('Invalid command.')
             continue
+        
+        #input('impit')
 
         response = receive_response(client_socket)
         print(response)
