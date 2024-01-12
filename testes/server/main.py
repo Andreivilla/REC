@@ -2,6 +2,7 @@ import socket
 import os
 from threading import Thread
 import time
+import queue
 
 def is_file_in_directory(file_name, directory_path='repository'):
     # Constrói o caminho completo do arquivo
@@ -50,11 +51,13 @@ def download_file(client_socket, file_name):
             end_time = time.time()
             elapsed_time = end_time - start_time
             transfer_rate = total_bytes_send/elapsed_time / 1024 #kilobytes por segundo
-            print(f'Taxa de transferência: {transfer_rate:.2f} KB/s')
-
+            #print(f'Taxa de transferência: {transfer_rate:.2f} KB/s')
+            print(f'{transfer_rate:.2f} KB/s')
+            queue_data.put(transfer_rate)#armazena dado na fila
+            
         #return file_content
         client_socket.send('$$enviado$$'.encode('utf-8'))
-        print('arquivo enviado')
+        #print('arquivo enviado')
     else:
         client_socket.send('$$file not found$$'.encode('utf-8'))
         
@@ -98,20 +101,33 @@ def handle_client(client_socket):
 
     client_socket.close()
 
+def mean(data):
+    return
+
 def start_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('localhost', 8888))
     server_socket.listen(5)
 
     print('Server listening on port 8888...')
+    try:
+        while True:
+            client_socket, addr = server_socket.accept()
+            print(f'Accepted connection from {addr}')
+            client_handler = Thread(target=handle_client, args=(client_socket,))
+            client_handler.start()
+    except KeyboardInterrupt:
+        results = []
+        while not queue_data.empty():
+            result = queue_data.get()
+            results.append(result)
+        print(results)
 
-    while True:
-        client_socket, addr = server_socket.accept()
-        print(f'Accepted connection from {addr}')
-        client_handler = Thread(target=handle_client, args=(client_socket,))
-        client_handler.start()
+        print("\nLoop interrompido pelo usuário.")        
 
 if __name__ == '__main__':
+    #cria uma fila para armazenar dados das threads
+    queue_data = queue.Queue()
     if not os.path.exists('repository'):
         os.makedirs('repository')
     start_server()

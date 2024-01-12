@@ -60,7 +60,7 @@ def download_file(client_socket, file_name, dest_path='repository'):
 
 def set_congestion_control_algorithm(tcp_socket):
     # Ajusta o algoritmo de controle de congestionamento
-    algorithm = 'reno'
+    algorithm = 'cubic'
     algorithm = algorithm.encode('utf-8')
     tcp_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_CONGESTION, algorithm)
 
@@ -75,7 +75,7 @@ def client_thread():
     while True:
         thread_id = threading.current_thread().ident
         #user_input = input('Enter command: ')
-        command, *params = f'download a.txt test/thread{thread_id}'.split()#user_input.split()
+        command, *params = f'download teste50.txt test/thread{thread_id}'.split()#user_input.split()
         #command, *params = user_input.split()
         #upload d.txt
         if command == 'exit':
@@ -112,7 +112,7 @@ def client_thread():
     client_socket.close()
 
 if __name__ == '__main__':
-    num_clients = 3  # Change this to the desired number of clients
+    num_clients = 50  # Change this to the desired number of clients
     threads = []
 
     for _ in range(num_clients):

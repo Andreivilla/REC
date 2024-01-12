@@ -11,6 +11,8 @@ def is_file_in_directory(file_name, directory_path='repository'):
 
 def list_files():
     files = os.listdir('repository')
+    if len(files) == 0:
+        return 'repository vazio'
     return '\n'.join(files)
 
 def upload_file(client_socket, file_name):
@@ -32,6 +34,7 @@ def upload_file(client_socket, file_name):
         print(f"Erro ao receber o arquivo {file_name}: {e}")
 
 def download_file(client_socket, file_name):
+    
     if is_file_in_directory(file_name):
         with open(f'repository/{file_name}', 'rb') as file:
             file_content = file.read(1024)
@@ -66,8 +69,6 @@ def handle_client(client_socket):
             
         elif command == 'upload':
             file_name, = params
-            #file_content = client_socket.recv(1024)
-            #response = upload_file(file_content, file_name)
             upload_file(client_socket, file_name)
             continue
         elif command == 'download':

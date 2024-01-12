@@ -29,7 +29,16 @@ def upload_file(client_socket, file_name):
         print('Arquivo não encontrado ele deve estar na pasta repository')
         return
 
-def download_file(client_socket, file_name, dest_path='repository'):
+def download_file(client_socket, file_name, dest_path=None):
+    if dest_path == None:
+        dest_path = 'repository'
+    else:
+        try:
+            os.mkdir('repository/' + dest_path)#se não houver diretorio ele cria
+            dest_path = 'repository/' + dest_path
+        except Exception as e:
+            dest_path = 'repository/' + dest_path
+    
     send_command(client_socket, 'download', file_name, dest_path)
     #file_content = client_socket.recv(1024)
     try:
